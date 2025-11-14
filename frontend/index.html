@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/Logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mediko</title>
+    <style>
+      body {
+        background-color: #ffffff; 
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDJnXs_MvjMX_0jm3KsO-6XOktVIUHdDew",
+      authDomain: "sophistiqueluxe-8567d.firebaseapp.com",
+      projectId: "sophistiqueluxe-8567d",
+      storageBucket: "sophistiqueluxe-8567d.firebasestorage.app",
+      messagingSenderId: "663138692926",
+      appId: "1:663138692926:web:318354cad715b1f46f866f",
+      measurementId: "G-517TSPG2NS"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+  </script>
+</html>
