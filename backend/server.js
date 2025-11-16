@@ -13,7 +13,6 @@ import notificationRouter from "./routes/notificationRoute.js";
 import { handleStripeWebhook } from "./controllers/stripeWebhookController.js";
 
 const app = express();
-app.use("/uploads", express.static("uploads"));
 const port = process.env.PORT || 4000;
 
 connectDB();
@@ -41,16 +40,7 @@ app.get("/", (req, res) => {
 });
 
 app.use((req, res, next) => {
-  console.warn(`404: Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).send("Route not found");
 });
 
-process.on("uncaughtException", (err) => {
-  console.error(
-    "FATAL UNCAUGHT EXCEPTION! Server is crashing. Error:",
-    err.stack
-  );
-  process.exit(1);
-});
-
-app.listen(port, () => console.log(`Server started on PORT: ${port}`));
+export default app;
