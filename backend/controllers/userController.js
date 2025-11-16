@@ -1,12 +1,11 @@
 import validator from "validator";
-import bcrypt from "bcryptjs"; // CHANGED from "bcrypt" to "bcryptjs"
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
-import transporter from "../middleware/nodemailer.js"; // Uses your existing transporter
+import transporter from "../middleware/nodemailer.js";
 import "dotenv/config";
-import crypto from "crypto"; // Added for password reset
+import crypto from "crypto";
 
-// Helper function to create JWT token
 const createToken = (id) => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -15,7 +14,6 @@ const createToken = (id) => {
   return jwt.sign({ id }, secret, { expiresIn: "7d" });
 };
 
-// Helper function to send verification email
 const sendVerificationEmail = async (email, code) => {
   await transporter.sendMail({
     from: process.env.GOOGLE_APP_EMAIL_USER,
@@ -43,7 +41,6 @@ const sendVerificationEmail = async (email, code) => {
   });
 };
 
-// Helper function to send password reset email
 const sendPasswordResetEmail = async (email, resetToken) => {
   const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
   await transporter.sendMail({
@@ -70,11 +67,6 @@ const sendPasswordResetEmail = async (email, resetToken) => {
   });
 };
 
-// --------------------------------------------------------------------------------------
-// 🔒 USER AUTHENTICATION
-// --------------------------------------------------------------------------------------
-
-// User Login
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -96,7 +88,6 @@ export const loginUser = async (req, res) => {
       return res.json({ success: false, message: "Invalid credentials" });
     }
 
-    // Check if the user is suspended
     if (user.suspended) {
       return res.json({
         success: false,
@@ -105,13 +96,11 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Check for verification (only if required)
     if (user.role === "customer" && !user.isVerified) {
-      // Generate a new code for the next attempt
       const verificationCode = Math.floor(
         100000 + Math.random() * 900000
       ).toString();
-      const verificationCodeExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+      const verificationCodeExpire = Date.now() + 10 * 60 * 1000;
 
       user.verificationCode = verificationCode;
       user.verificationCodeExpire = verificationCodeExpire;
@@ -141,7 +130,6 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// User Registration
 export const registerUser = async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
   try {
@@ -163,7 +151,6 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const exists = await userModel.findOne({ email });
     if (exists) {
       return res.json({
@@ -172,15 +159,13 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Generate Verification Code
     const verificationCode = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
-    const verificationCodeExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const verificationCodeExpire = Date.now() + 10 * 60 * 1000;
 
     const newUser = new userModel({
       firstName,
@@ -189,14 +174,12 @@ export const registerUser = async (req, res) => {
       password: hashedPassword,
       verificationCode,
       verificationCodeExpire,
-      // All new customers start unverified
       isVerified: false,
       role: "customer",
     });
 
     const user = await newUser.save();
 
-    // Send the verification email
     await sendVerificationEmail(user.email, verificationCode);
 
     const token = createToken(user._id);
@@ -222,7 +205,6 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// Verify User Account
 export const verifyAccount = async (req, res) => {
   const { email, code } = req.body;
   try {
@@ -253,9 +235,8 @@ export const verifyAccount = async (req, res) => {
       });
     }
 
-    // Verification successful
     user.isVerified = true;
-    user.verificationCode = undefined; // Clear code after successful verification
+    user.verificationCode = undefined;
     user.verificationCodeExpire = undefined;
     await user.save();
 
@@ -282,7 +263,6 @@ export const verifyAccount = async (req, res) => {
   }
 };
 
-// Resend Verification Code
 export const resendVerificationCode = async (req, res) => {
   const { email } = req.body;
   try {
@@ -297,17 +277,15 @@ export const resendVerificationCode = async (req, res) => {
       });
     }
 
-    // Generate a new code and set new expiry
     const verificationCode = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
-    const verificationCodeExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const verificationCodeExpire = Date.now() + 10 * 60 * 1000;
 
     user.verificationCode = verificationCode;
     user.verificationCodeExpire = verificationCodeExpire;
     await user.save();
 
-    // Send the new verification email
     await sendVerificationEmail(user.email, verificationCode);
 
     res.json({
@@ -323,11 +301,6 @@ export const resendVerificationCode = async (req, res) => {
   }
 };
 
-// --------------------------------------------------------------------------------------
-// 🔑 PASSWORD MANAGEMENT
-// --------------------------------------------------------------------------------------
-
-// Request Password Reset (Send Email)
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
   try {
@@ -336,16 +309,13 @@ export const forgotPassword = async (req, res) => {
       return res.json({ success: false, message: "User not found." });
     }
 
-    // 1. Generate a unique reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenExpire = Date.now() + 60 * 60 * 1000; // 1 hour
+    const resetTokenExpire = Date.now() + 60 * 60 * 1000;
 
-    // 2. Save the token and expiry to the user document
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpire = resetTokenExpire;
     await user.save();
 
-    // 3. Send the email with the reset link
     await sendPasswordResetEmail(user.email, resetToken);
 
     res.json({
@@ -358,7 +328,6 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-// Reset Password (Validate Token and Change Password)
 export const resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
   try {
@@ -381,11 +350,9 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Hash the new password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
 
-    // Clear the reset token fields
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save();
@@ -400,11 +367,6 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// --------------------------------------------------------------------------------------
-// 🧑 USER MANAGEMENT (Admin/Profile)
-// --------------------------------------------------------------------------------------
-
-// Get All Users (Admin)
 export const getAllUsers = async (req, res) => {
   try {
     const users = await userModel.find({}).select("-password");
@@ -414,10 +376,8 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// Get Single User Profile
 export const getUserProfile = async (req, res) => {
   try {
-    // Get user ID from the authentication middleware (req.user)
     const userId = req.user._id;
 
     const user = await userModel.findById(userId).select("-password");
@@ -432,7 +392,6 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-// Update User Profile (Customer)
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -452,7 +411,6 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-// Update User by ID (Admin)
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -462,7 +420,6 @@ export const updateUser = async (req, res) => {
     const user = await userModel.findById(id);
     if (!user) return res.json({ success: false, message: "User not found" });
 
-    // Update fields only if they are provided
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
     if (email) user.email = email;
